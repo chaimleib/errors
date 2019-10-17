@@ -7,8 +7,9 @@ import (
 )
 
 func TestFuncInfo(t *testing.T) {
-	name, file, line := FuncInfo(1)
-	assert.Contains(t, name, "errors.TestFuncInfo")
-	assert.Contains(t, file, "errors/funcinfo_test.go")
-	assert.LessOrEqual(t, 10, line)
+	fi := NewFuncInfo(1)
+	assert.NotNil(t, fi)
+	assert.Contains(t, fi.FuncName(), "errors.TestFuncInfo")
+	assert.Contains(t, fi.File(), "errors/funcinfo_test.go")
+	assert.LessOrEqual(t, 10, fi.Line())
 }

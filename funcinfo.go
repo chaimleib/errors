@@ -4,16 +4,40 @@ import (
 	"runtime"
 )
 
-func FuncInfo(calldepth int) (name, file string, line int) {
+type funcInfo struct {
+	file, funcName string
+	line           int
+}
+
+func (fi *funcInfo) File() string {
+	return fi.file
+}
+
+func (fi *funcInfo) FuncName() string {
+	return fi.funcName
+}
+
+func (fi *funcInfo) Line() int {
+	return fi.line
+}
+
+type FuncInfo interface {
+	File() string
+	Line() int
+	FuncName() string
+}
+
+func NewFuncInfo(calldepth int) FuncInfo {
 	var pc uintptr
 	var ok bool
-	pc, file, line, ok = runtime.Caller(calldepth)
-	if file == "" {
-		file = "?file?"
+	fi := new(funcInfo)
+	pc, fi.file, fi.line, ok = runtime.Caller(calldepth)
+	if fi.file == "" {
+		fi.file = "?file?"
 	}
 	if !ok {
-		return
+		return nil
 	}
-	name = runtime.FuncForPC(pc).Name()
-	return
+	fi.funcName = runtime.FuncForPC(pc).Name()
+	return fi
 }

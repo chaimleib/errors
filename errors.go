@@ -82,12 +82,5 @@ func (g Group) Error() string {
 }
 
 func indent(s string) string {
-	lines := strings.Split(s, "\n")
-	return "\t" + strings.Join(lines, "\n\t")
-}
-
-type prefixer struct {
-	fpath      string
-	funcName   string
-	argSummary string
+	return "\t" + strings.ReplaceAll(s, "\n", "\n\t")
 }

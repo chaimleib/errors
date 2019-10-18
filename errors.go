@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	// provided by Go 1.13
 	As     = errors.As
 	Is     = errors.Is
 	New    = errors.New
@@ -18,15 +19,21 @@ type wrapped struct {
 	wrapped error
 }
 
+// Wrapped is an error whose cause can be retrieved with Unwrap()
 type Wrapped interface {
 	error
 	Unwrap() error
 }
 
+// Wrap is like fmt.Errorf, except that calling Unwrap() on the result yields
+// the provided cause.
 func Wrap(cause error, msg string, vars ...interface{}) Wrapped {
 	return WrapWith(cause, fmt.Errorf(msg, vars...))
 }
 
+// WrapWith takes two errors and wraps the first provided error with the
+// second. This is particularly useful when the wrapping error itself is a
+// special type with custom fields and methods.
 func WrapWith(cause, err error) Wrapped {
 	w := new(wrapped)
 	w.wrapped = cause
@@ -38,6 +45,8 @@ func (w *wrapped) Unwrap() error {
 	return w.wrapped
 }
 
+// Stack returns a slice of all the errors found by recursively calling
+// Unwrap() on the provided error. Errors causing other errors appear later.
 func Stack(err error) []error {
 	var errSlice []error
 	for err != nil {
@@ -49,12 +58,10 @@ func Stack(err error) []error {
 		break
 	}
 	return errSlice
-	// reverse the slice
-	// for a, b := 0, len(errSlice)-1; a < b; a, b = a+1, b-1 {
-	// 	errSlice[a], errSlice[b] = errSlice[b], errSlice[a]
-	// }
 }
 
+// StackString recursively calls Unwrap() on the given error and stringifies
+// all the errors in the chain.
 func StackString(err error) string {
 	stack := Stack(err)
 	messages := make([]string, 0, len(stack))
@@ -64,8 +71,12 @@ func StackString(err error) string {
 	return strings.Join(messages, "\n")
 }
 
+// Group allows treating a slice of errors as an error. This is useful when
+// many errors together lead to one error downstream. For example, a network
+// fetch might fail only if all the mirrors fail to respond.
 type Group []error
 
+// Error formats a []error in an easily-readable way for human consumption.
 func (g Group) Error() string {
 	l := []error(g)
 	switch len(l) {

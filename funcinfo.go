@@ -35,12 +35,13 @@ type FuncInfo interface {
 }
 
 // NewFuncInfo ascends the number of stack frames indicated by calldepth and
-// returns a FuncInfo describing the location of that line of code.
+// returns a FuncInfo describing the location of that line of code. A calldepth
+// of 0 refers to the invocation of NewFunInfo itself.
 func NewFuncInfo(calldepth int) FuncInfo {
 	var pc uintptr
 	var ok bool
 	fi := new(funcInfo)
-	pc, fi.file, fi.line, ok = runtime.Caller(calldepth)
+	pc, fi.file, fi.line, ok = runtime.Caller(calldepth + 1)
 	if fi.file == "" {
 		fi.file = "?file?"
 	}

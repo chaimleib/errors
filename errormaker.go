@@ -43,7 +43,7 @@ func NewErrorMaker(argStr string, args ...interface{}) ErrorMaker {
 }
 
 func (aem *argsErrorMaker) prefix() string {
-	fi := NewFuncInfo(3)
+	fi := NewFuncInfo(2)
 	return fmt.Sprintf(
 		"%s:%d %s(%s): ",
 		path.Base(fi.File()),
@@ -93,7 +93,7 @@ func NewLazyErrorMaker(argStr string, args ...interface{}) ErrorMaker {
 }
 
 func (laem *lazyArgsErrorMaker) prefix() string {
-	fi := NewFuncInfo(3)
+	fi := NewFuncInfo(2)
 	argStr := fmt.Sprintf(laem.argStr, laem.args...)
 	return fmt.Sprintf(
 		"<lazyMsg> %s:%d %s(%s): ",

@@ -41,8 +41,34 @@ func WrapWith(cause, err error) Wrapped {
 	return w
 }
 
+// Unwrap returns the cause of the sender.
 func (w *wrapped) Unwrap() error {
 	return w.wrapped
+}
+
+// Is returns whether the wrapping error or a member of its cause chain matches
+// the target.
+func (w *wrapped) Is(target error) bool {
+	switch target := target.(type) {
+	case *wrapped:
+		if w == target || (w.error == target.error && w.wrapped == target.wrapped) {
+			return true
+		}
+	}
+	return Is(w.error, target) || Is(w.wrapped, target)
+}
+
+// As assigns the first compatible error it finds in the cause chain to the
+// target, and returns true if successful. If successful, Is(w, target) will be
+// true.
+func (w *wrapped) As(target interface{}) bool {
+	switch target := target.(type) {
+	case *wrapped:
+		target.error = w.error
+		target.wrapped = w.wrapped
+		return true
+	}
+	return As(w.error, target) || As(w.wrapped, target)
 }
 
 // Stack returns a slice of all the errors found by recursively calling

@@ -2,48 +2,56 @@
 
 This Go package is a drop-in replacement to the built-in [`errors`](https://golang.org/pkg/errors/) package.
 
-## What can I do?
+## Why?
 
-Here's some code:
+**Error messages exist to help you fix the problem.**
 
-* Wrap errors ([try me](https://goplay.space/#6s48CkaR89-))
-
-```go
-timeoutErr := fmt.Errorf("timeout")
-serverErr := errors.Wrap(timeoutErr, "server A failed")
-loadErr := errors.Wrap(serverErr, "could not load resource")
-fmt.Println("error:", loadErr)
-// error: could not load resource
+```
+main.go:34 main.main() error getting user profile
+userprofile.go:124 github.com/chaimleib/client.UserProfile(ctx, "auser@example.com") error authenticating
+client.go:63 github.com/chaimleib/client.Authenticate(ctx, "otheruser@example.com") server error: password expired
 ```
 
-* Print traces unwrapping the error chain ([try me](https://goplay.space/#6s48CkaR89-))
+That's much more helpful than this:
 
-```go
-// ...
-trace := errors.StackString(loadErr)
-fmt.Println("trace:")
-fmt.Println(trace)
-// trace:
-// could not load resource
-// server A failed
-// timeout
+```
+server error: password expired
 ```
 
-* Show the function call where errors happened ([try me](https://goplay.space/#jGQ4wzxt-NS))
+With enhanced errors, you can begin fixing the problem right away:
+
+1. You know exactly where the error came from.
+2. You know what code path led to the error.
+3. You know what inputs each function was seeing.
+
+All this, without having to use [`rg`](https://github.com/BurntSushi/ripgrep) or open up any files!
+
+## How?
+
+1. At the beginning of your methods, have this:
 
 ```go
-func ping(path string) error {
-	em := errors.NewErrorMaker("%q", path)
-	if !strings.HasPrefix(path, "/") {
-		return em.Errorf("not an absolute path")
-	}
-	if err := requestMust200("https://example.com" + path); err != nil {
-		return em.Wrap(err, "request failed")
-	}
-	return nil
+func (client Client) UserProfile(ctx context.Context, user string) (UserProfile, error) {
+  b := errors.NewBuilder("ctx, %q", user)
+```
+
+2. Whenever you return an error:
+
+```go
+if err != nil {
+  return nil, b.Wrap(err, "error parsing %q", value)
 }
-// prog.go:21 main.ping("/health"): request failed
 ```
+
+3. At the top of the program, print the full stack trace:
+
+```go
+if err != nil {
+  fmt.Println(errors.StackString(err))
+}
+```
+
+## What else can I do?
 
 * Group errors ([try me](https://goplay.space/#auXQKNwP0VV))
 

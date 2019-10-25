@@ -6,32 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSimpleErrorMaker(t *testing.T) {
-	e := SimpleErrorMaker.Errorf("a")
-	assert.Error(t, e)
-	assert.Equal(t, "a", e.Error())
+func TestBuiltinBuilder(t *testing.T) {
+	b := BuiltinBuilder.Errorf("a")
+	assert.Error(t, b)
+	assert.Equal(t, "a", b.Error())
 }
 
-func TestNewErrorMaker(t *testing.T) {
+func TestNewBuilder(t *testing.T) {
 	changingMap := map[string]string{"first": "orig"}
-	em := NewErrorMaker("t, %q", changingMap)
+	b := NewBuilder("t, %q", changingMap)
 	changingMap["second"] = "new"
-	e := em.Errorf("a")
+	err := b.Errorf("a")
 	assert.Regexp(
 		t,
-		`^errormaker_test\.go:[0-9]+ [^ ]+/errors\.TestNewErrorMaker\(t, map\["first":"orig"\]\): a$`,
-		e.Error(),
+		`^errormaker_test\.go:[0-9]+ [^ ]+/errors\.TestNewBuilder\(t, map\["first":"orig"\]\): a$`,
+		err.Error(),
 	)
 }
 
-func TestNewLazyErrorMaker(t *testing.T) {
+func TestNewLazyBuilder(t *testing.T) {
 	changingMap := map[string]string{"first": "orig"}
-	em := NewLazyErrorMaker("t, %q", changingMap)
+	b := NewLazyBuilder("t, %q", changingMap)
 	changingMap["second"] = "new"
-	e := em.Errorf("a")
+	err := b.Errorf("a")
 	assert.Regexp(
 		t,
-		`^<lazyMsg> errormaker_test\.go:[0-9]+ [^ ]+/errors\.TestNewLazyErrorMaker\(t, map\[("[^"]+":"[^"]+" ?){2}\]\): a$`,
-		e.Error(),
+		`^<lazyMsg> errormaker_test\.go:[0-9]+ [^ ]+/errors\.TestNewLazyBuilder\(t, map\[("[^"]+":"[^"]+" ?){2}\]\): a$`,
+		err.Error(),
 	)
 }

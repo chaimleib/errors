@@ -5,24 +5,24 @@ import (
 	"path"
 )
 
-// ErrorMaker implementors can make and wrap errors.
-type ErrorMaker interface {
+// Builder implementors can make and wrap errors.
+type Builder interface {
 	Errorf(msg string, args ...interface{}) error
 	Wrap(err error, msg string, args ...interface{}) Wrapped
 }
 
-type defaultErrorMaker struct{}
+type builtinBuilder struct{}
 
-// SimpleErrorMaker has no frills. It is a proxy to built-in go packages.
-var SimpleErrorMaker ErrorMaker = (*defaultErrorMaker)(nil)
+// SimpleBuilder has no frills. It is a proxy to built-in go packages.
+var BuiltinBuilder Builder = (*builtinBuilder)(nil)
 
 // Errorf is the same as fmt.Errorf
-func (dem *defaultErrorMaker) Errorf(msg string, args ...interface{}) error {
+func (bb *builtinBuilder) Errorf(msg string, args ...interface{}) error {
 	return fmt.Errorf(msg, args...)
 }
 
 // Wrap is the same as errors.Wrap
-func (dem *defaultErrorMaker) Wrap(
+func (bb *builtinBuilder) Wrap(
 	err error,
 	msg string,
 	args ...interface{},
@@ -30,71 +30,71 @@ func (dem *defaultErrorMaker) Wrap(
 	return Wrap(err, msg, args...)
 }
 
-type argsErrorMaker struct {
+type argsBuilder struct {
 	argStr string
 }
 
-// NewErrorMaker prefixes info about which function was called, and the args
+// NewBuilder prefixes info about which function was called, and the args
 // provided.
-func NewErrorMaker(argStr string, args ...interface{}) ErrorMaker {
-	aem := new(argsErrorMaker)
-	aem.argStr = fmt.Sprintf(argStr, args...)
-	return aem
+func NewBuilder(argStr string, args ...interface{}) Builder {
+	ab := new(argsBuilder)
+	ab.argStr = fmt.Sprintf(argStr, args...)
+	return ab
 }
 
-func (aem *argsErrorMaker) prefix() string {
+func (ab *argsBuilder) prefix() string {
 	fi := NewFuncInfo(2)
 	return fmt.Sprintf(
 		"%s:%d %s(%s): ",
 		path.Base(fi.File()),
 		fi.Line(),
 		fi.FuncName(),
-		aem.argStr,
+		ab.argStr,
 	)
 }
 
 // Errorf is the same as fmt.Errorf, except that the error message gets a
-// prefix with line number info and, if provided to NewErrorMaker, descriptions
+// prefix with line number info and, if provided to NewBuilder, descriptions
 // of the arguments passed to this function call.
-func (aem *argsErrorMaker) Errorf(msg string, args ...interface{}) error {
-	return fmt.Errorf("%s%s", aem.prefix(), fmt.Sprintf(msg, args...))
+func (ab *argsBuilder) Errorf(msg string, args ...interface{}) error {
+	return fmt.Errorf("%s%s", ab.prefix(), fmt.Sprintf(msg, args...))
 }
 
 // Wrap is the same as errors.Wrap, except that the error message gets a prefix
-// with line number info and, if provided to NewErrorMaker, descriptions of the
+// with line number info and, if provided to NewBuilder, descriptions of the
 // arguments passed to this function call.
-func (aem *argsErrorMaker) Wrap(
+func (ab *argsBuilder) Wrap(
 	err error,
 	msg string,
 	args ...interface{},
 ) Wrapped {
-	return Wrap(err, "%s%s", aem.prefix(), fmt.Sprintf(msg, args...))
+	return Wrap(err, "%s%s", ab.prefix(), fmt.Sprintf(msg, args...))
 }
 
-type lazyArgsErrorMaker struct {
+type lazyArgsBuilder struct {
 	argStr string
 	args   []interface{}
 }
 
-// NewLazyErrorMaker SHOULD NOT be used unless it is known that NewErrorMaker
-// won't work. Frequent undisciplined usage of NewLazyErrorMaker can lead to
-// poor code maintainability. It is similar to NewErrorMaker, except that the
+// NewLazyBuilder SHOULD NOT be used unless it is known that NewBuilder
+// won't work. Frequent undisciplined usage of NewLazyBuilder can lead to
+// poor code maintainability. It is similar to NewBuilder, except that the
 // prefix is formatted later, when the error actually occurs. This can be
 // important for performance in functions called hundreds of times per second,
 // but misleading debug messages can result if the arguments have changed since
 // the function was first called. As a debug warning, errors are labeled
 // "<lazyMsg>" to indicate that the argument values were formatted after the
-// error appeared, not when the ErrorMaker was created.
-func NewLazyErrorMaker(argStr string, args ...interface{}) ErrorMaker {
-	laem := new(lazyArgsErrorMaker)
-	laem.argStr = argStr
-	laem.args = args
-	return laem
+// error appeared, not when the Builder was created.
+func NewLazyBuilder(argStr string, args ...interface{}) Builder {
+	lab := new(lazyArgsBuilder)
+	lab.argStr = argStr
+	lab.args = args
+	return lab
 }
 
-func (laem *lazyArgsErrorMaker) prefix() string {
+func (lab *lazyArgsBuilder) prefix() string {
 	fi := NewFuncInfo(2)
-	argStr := fmt.Sprintf(laem.argStr, laem.args...)
+	argStr := fmt.Sprintf(lab.argStr, lab.args...)
 	return fmt.Sprintf(
 		"<lazyMsg> %s:%d %s(%s): ",
 		path.Base(fi.File()),
@@ -105,19 +105,19 @@ func (laem *lazyArgsErrorMaker) prefix() string {
 }
 
 // Errorf is the same as fmt.Errorf, except that the error message gets a
-// prefix with line number info and, if provided to NewLazyErrorMaker,
+// prefix with line number info and, if provided to NewLazyBuilder,
 // descriptions of the arguments passed to this function call.
-func (laem *lazyArgsErrorMaker) Errorf(msg string, args ...interface{}) error {
-	return fmt.Errorf("%s%s", laem.prefix(), fmt.Sprintf(msg, args...))
+func (lab *lazyArgsBuilder) Errorf(msg string, args ...interface{}) error {
+	return fmt.Errorf("%s%s", lab.prefix(), fmt.Sprintf(msg, args...))
 }
 
 // Wrap is the same as errors.Wrap, except that the error message gets a prefix
-// with line number info and, if provided to NewLazyErrorMaker, descriptions of
+// with line number info and, if provided to NewLazyBuilder, descriptions of
 // the arguments passed to this function call.
-func (laem *lazyArgsErrorMaker) Wrap(
+func (lab *lazyArgsBuilder) Wrap(
 	err error,
 	msg string,
 	args ...interface{},
 ) Wrapped {
-	return Wrap(err, "%s%s", laem.prefix(), fmt.Sprintf(msg, args...))
+	return Wrap(err, "%s%s", lab.prefix(), fmt.Sprintf(msg, args...))
 }

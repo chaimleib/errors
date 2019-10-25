@@ -42,15 +42,20 @@ func NewBuilder(argStr string, args ...interface{}) Builder {
 	return ab
 }
 
-func (ab *argsBuilder) prefix() string {
-	fi := NewFuncInfo(2)
+// prefix returns a standard error prefix that shows where the error came from
+// and what args the erroring func was called with.
+func prefix(fi FuncInfo, argStr string) string {
 	return fmt.Sprintf(
-		"%s:%d %s(%s): ",
+		"%s(%s) %s:%d ",
+		fi.FuncName(),
+		argStr,
 		path.Base(fi.File()),
 		fi.Line(),
-		fi.FuncName(),
-		ab.argStr,
 	)
+}
+
+func (ab *argsBuilder) prefix() string {
+	return prefix(NewFuncInfo(2), ab.argStr)
 }
 
 // Errorf is the same as fmt.Errorf, except that the error message gets a
@@ -82,8 +87,8 @@ type lazyArgsBuilder struct {
 // prefix is formatted later, when the error actually occurs. This can be
 // important for performance in functions called hundreds of times per second,
 // but misleading debug messages can result if the arguments have changed since
-// the function was first called. As a debug warning, errors are labeled
-// "<lazyMsg>" to indicate that the argument values were formatted after the
+// the function was first called. As a debug warning, any args are labeled
+// "<lazy>" to indicate that the argument values were formatted after the
 // error appeared, not when the Builder was created.
 func NewLazyBuilder(argStr string, args ...interface{}) Builder {
 	lab := new(lazyArgsBuilder)
@@ -93,15 +98,11 @@ func NewLazyBuilder(argStr string, args ...interface{}) Builder {
 }
 
 func (lab *lazyArgsBuilder) prefix() string {
-	fi := NewFuncInfo(2)
 	argStr := fmt.Sprintf(lab.argStr, lab.args...)
-	return fmt.Sprintf(
-		"<lazyMsg> %s:%d %s(%s): ",
-		path.Base(fi.File()),
-		fi.Line(),
-		fi.FuncName(),
-		argStr,
-	)
+	if len(argStr) != 0 { // if no args, nothing to warn about
+		argStr = "<lazy> " + argStr
+	}
+	return prefix(NewFuncInfo(2), argStr)
 }
 
 // Errorf is the same as fmt.Errorf, except that the error message gets a

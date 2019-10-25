@@ -4,19 +4,21 @@ This Go package is a drop-in replacement to the built-in [`errors`](https://gola
 
 ## Why?
 
-**Error messages exist to help you fix the problem.**
+**Error messages exist to help you fix the problem.** I kept finding that regular error messages required too much searching to understand the issue. I like this better:
 
 ```
-main.go:34 main.main() error getting user profile
-userprofile.go:124 github.com/chaimleib/client.UserProfile(ctx, "auser@example.com") error authenticating
-client.go:63 github.com/chaimleib/client.Authenticate(ctx, "otheruser@example.com") server error: password expired
+main.main() main.go:34 error getting user profile
+github.com/chaimleib/client.UserProfile(ctx, "alice") userprofile.go:124 error authenticating
+github.com/chaimleib/client.Authenticate(ctx, "bob") client.go:63 password expired
 ```
 
 That's much more helpful than this:
 
 ```
-server error: password expired
+password expired
 ```
+
+What operation required a password? Where did this get generated? How did we get there?
 
 With enhanced errors, you can begin fixing the problem right away:
 

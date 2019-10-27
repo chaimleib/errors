@@ -19,7 +19,7 @@ func TestNewBuilder(t *testing.T) {
 	err := b.Errorf("a")
 	assert.Regexp(
 		t,
-		`^builder_test\.go:[0-9]+ [^ ]+/errors\.TestNewBuilder\(t, map\["first":"orig"\]\): a$`,
+		`^[^ ]+/errors\.TestNewBuilder\(t, map\["first":"orig"\]\) builder_test\.go:[0-9]+ a$`,
 		err.Error(),
 	)
 }
@@ -31,7 +31,7 @@ func TestNewLazyBuilder(t *testing.T) {
 	err := b.Errorf("a")
 	assert.Regexp(
 		t,
-		`^<lazyMsg> builder_test\.go:[0-9]+ [^ ]+/errors\.TestNewLazyBuilder\(t, map\[("[^"]+":"[^"]+" ?){2}\]\): a$`,
+		`^[^ ]+/errors\.TestNewLazyBuilder\(<lazy> t, map\[("[^"]+":"[^"]+" ?){2}\]\) builder_test\.go:[0-9]+ a$`,
 		err.Error(),
 	)
 }

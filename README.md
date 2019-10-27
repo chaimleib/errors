@@ -1,6 +1,8 @@
+![Travis CI build status](https://travis-ci.com/chaimleib/errors.svg?branch=master)
+
 # github.com/chaimleib/errors
 
-This Go package is a drop-in replacement to the built-in [`errors`](https://golang.org/pkg/errors/) package.
+This Go package is a drop-in replacement to the built-in [`errors`](https://golang.org/pkg/errors/) package. It is designed for Go 1.13, while under 1.12, the `Is`, `As` and `Unwrap` functions have been backported.
 
 ## Why?
 

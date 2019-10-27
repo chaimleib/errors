@@ -1,17 +1,8 @@
 package errors
 
 import (
-	"errors"
 	"fmt"
 	"strings"
-)
-
-var (
-	// provided by Go 1.13
-	As     = errors.As
-	Is     = errors.Is
-	New    = errors.New
-	Unwrap = errors.Unwrap
 )
 
 type wrapped struct {

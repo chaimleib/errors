@@ -42,7 +42,7 @@ func (w *wrapped) Unwrap() error {
 func (w *wrapped) Is(target error) bool {
 	switch target := target.(type) {
 	case *wrapped:
-		if w == target || (w.error == target.error && w.wrapped == target.wrapped) {
+		if w == target {
 			return true
 		}
 	}

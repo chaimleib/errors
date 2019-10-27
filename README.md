@@ -11,7 +11,7 @@ This Go package is a drop-in replacement to the built-in [`errors`](https://gola
 ```
 main.main() main.go:34 error getting user profile
 github.com/chaimleib/client.UserProfile(ctx, "alice") userprofile.go:124 error authenticating
-github.com/chaimleib/client.Authenticate(ctx, "bob") client.go:63 password expired
+github.com/chaimleib/client.Authenticate(ctx, "bob", pw) client.go:63 password expired
 ```
 
 That's much more helpful than this:
@@ -35,8 +35,11 @@ All this, without having to use [`rg`](https://github.com/BurntSushi/ripgrep) or
 1. At the beginning of your methods, have this:
 
 ```go
-func (client Client) UserProfile(ctx context.Context, user string) (UserProfile, error) {
-  b := errors.NewBuilder("ctx, %q", user)
+func (client Client) Authenticate(ctx context.Context, user, pw string) (UserProfile, error) {
+  b := errors.NewBuilder("ctx, %q, pw", user)
+  // Note: You don't have to show values for all the arguments.
+  // An idea: for brevity, try "[%d]aSlice", len(aSlice) instead of showing the
+  // whole slice or map, etc.
 ```
 
 2. Whenever you return an error:
@@ -57,6 +60,8 @@ if err != nil {
 
 ## What else can I do?
 
+* Use `Is`, `As` and `Unwrap` in Go 1.12 (added officially in Go 1.13)
+
 * Group errors ([try me](https://goplay.space/#auXQKNwP0VV))
 
 ```go
@@ -74,12 +79,20 @@ fmt.Println(errors.StackString(wrapped))
 // ]
 ```
 
+* Get call site info with `NewFuncInfo(calldepth)`. (This is for debugging output only. It is bad design to write application logic around these values.)
+
+```go
+fi := errors.NewFuncInfo(1)
+fmt.Println(fi.File(), fi.Line(), fi.FuncName())
+// /absolute/path/to/main.go 12 main.main
+```
+
 ## License
 
 Copyright 2019 Chaim Leib Halbert
 
 Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+you may not use this source code except in compliance with the License.
 You may obtain a copy of the License at
 
    http://www.apache.org/licenses/LICENSE-2.0

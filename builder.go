@@ -2,7 +2,6 @@ package errors
 
 import (
 	"fmt"
-	"path"
 )
 
 // Builder implementors can make and wrap errors.
@@ -30,6 +29,39 @@ func (bb *builtinBuilder) Wrap(
 	return Wrap(err, msg, args...)
 }
 
+type signatured struct {
+	message string
+	fi      FuncInfo
+	params  interface{ String() string }
+}
+
+func (s *signatured) Error() string {
+	return s.message
+}
+
+func (s *signatured) Location() FuncInfo {
+	return s.fi
+}
+
+func (s *signatured) Parameters() interface{ String() string } {
+	return s.params
+}
+
+type stringStringer string
+
+func (ss stringStringer) String() string {
+	return string(ss)
+}
+
+type formatStringer struct {
+	fmt    string
+	params []interface{}
+}
+
+func (fs formatStringer) String() string {
+	return fmt.Sprintf(fs.fmt, fs.params...)
+}
+
 type argsBuilder struct {
 	argStr string
 }
@@ -42,27 +74,15 @@ func NewBuilder(argStr string, args ...interface{}) Builder {
 	return ab
 }
 
-// prefix returns a standard error prefix that shows where the error came from
-// and what args the erroring func was called with.
-func prefix(fi FuncInfo, argStr string) string {
-	return fmt.Sprintf(
-		"%s(%s) %s:%d ",
-		fi.FuncName(),
-		argStr,
-		path.Base(fi.File()),
-		fi.Line(),
-	)
-}
-
-func (ab *argsBuilder) prefix() string {
-	return prefix(NewFuncInfo(2), ab.argStr)
-}
-
 // Errorf is the same as fmt.Errorf, except that the error message gets a
 // prefix with line number info and, if provided to NewBuilder, descriptions
 // of the arguments passed to this function call.
 func (ab *argsBuilder) Errorf(msg string, args ...interface{}) error {
-	return fmt.Errorf("%s%s", ab.prefix(), fmt.Sprintf(msg, args...))
+	return &signatured{
+		message: fmt.Sprintf(msg, args...),
+		fi:      NewFuncInfo(1),
+		params:  stringStringer(ab.argStr),
+	}
 }
 
 // Wrap is the same as errors.Wrap, except that the error message gets a prefix
@@ -73,11 +93,15 @@ func (ab *argsBuilder) Wrap(
 	msg string,
 	args ...interface{},
 ) Wrapped {
-	return Wrap(err, "%s%s", ab.prefix(), fmt.Sprintf(msg, args...))
+	return WrapWith(err, &signatured{
+		message: fmt.Sprintf(msg, args...),
+		fi:      NewFuncInfo(1),
+		params:  stringStringer(ab.argStr),
+	})
 }
 
 type lazyArgsBuilder struct {
-	argStr string
+	argFmt string
 	args   []interface{}
 }
 
@@ -90,26 +114,26 @@ type lazyArgsBuilder struct {
 // the function was first called. As a debug warning, any args are labeled
 // "<lazy>" to indicate that the argument values were formatted after the
 // error appeared, not when the Builder was created.
-func NewLazyBuilder(argStr string, args ...interface{}) Builder {
+func NewLazyBuilder(argFmt string, args ...interface{}) Builder {
 	lab := new(lazyArgsBuilder)
-	lab.argStr = argStr
+	lab.argFmt = argFmt
 	lab.args = args
 	return lab
-}
-
-func (lab *lazyArgsBuilder) prefix() string {
-	argStr := fmt.Sprintf(lab.argStr, lab.args...)
-	if len(argStr) != 0 { // if no args, nothing to warn about
-		argStr = "<lazy> " + argStr
-	}
-	return prefix(NewFuncInfo(2), argStr)
 }
 
 // Errorf is the same as fmt.Errorf, except that the error message gets a
 // prefix with line number info and, if provided to NewLazyBuilder,
 // descriptions of the arguments passed to this function call.
 func (lab *lazyArgsBuilder) Errorf(msg string, args ...interface{}) error {
-	return fmt.Errorf("%s%s", lab.prefix(), fmt.Sprintf(msg, args...))
+	argFmt := lab.argFmt
+	if len(argFmt) != 0 { // if no args, nothing to warn about
+		argFmt = "<lazy> " + argFmt
+	}
+	return &signatured{
+		message: fmt.Sprintf(msg, args...),
+		fi:      NewFuncInfo(1),
+		params:  formatStringer{argFmt, lab.args},
+	}
 }
 
 // Wrap is the same as errors.Wrap, except that the error message gets a prefix
@@ -120,5 +144,13 @@ func (lab *lazyArgsBuilder) Wrap(
 	msg string,
 	args ...interface{},
 ) Wrapped {
-	return Wrap(err, "%s%s", lab.prefix(), fmt.Sprintf(msg, args...))
+	argFmt := lab.argFmt
+	if len(argFmt) != 0 { // if no args, nothing to warn about
+		argFmt = "<lazy> " + argFmt
+	}
+	return WrapWith(err, &signatured{
+		message: fmt.Sprintf(msg, args...),
+		fi:      NewFuncInfo(1),
+		params:  formatStringer{argFmt, lab.args},
+	})
 }

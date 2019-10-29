@@ -28,6 +28,7 @@ func Test3rdPartyWrappedError(t *testing.T) {
 func TestStackString(t *testing.T) {
 	inner := fmt.Errorf("a")
 	outer := Wrap(inner, "b")
+	assert.Equal(t, "b", outer.Error())
 	assert.Equal(t, "b\na", StackString(outer))
 }
 
@@ -38,7 +39,10 @@ func TestGroup(t *testing.T) {
 	assert.Equal(t, "a", Group([]error{a}).Error())
 
 	bc := Wrap(fmt.Errorf("c"), "b")
-	assert.Equal(t, "[\n\ta\n\t,\n\tb\n\tc\n]", Group([]error{a, bc}).Error())
+	g := Group([]error{a, bc})
+	assert.Equal(t, "[\n\ta\n\t,\n\tb\n\tc\n]", g.StackString())
+	assert.Equal(t, "[\n\ta\n\t,\n\tb\n\tc\n]", StackString(g))
+	assert.Equal(t, "[\n\ta\n\t,\n\tb\n]", g.Error())
 }
 
 func TestWrapIs(t *testing.T) {

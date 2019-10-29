@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"path"
 	"strings"
 )
 
@@ -83,7 +84,36 @@ func StackString(err error) string {
 	stack := Stack(err)
 	messages := make([]string, 0, len(stack))
 	for _, err := range stack {
-		messages = append(messages, err.Error())
+		switch err := err.(type) {
+		case interface {
+			Error() string
+			Location() FuncInfo
+			Parameters() interface{ String() string }
+		}:
+			messages = append(messages, fmt.Sprintf(
+				"%s(%s) %s:%d %v",
+				err.Location().FuncName(),
+				err.Parameters().String(),
+				path.Base(err.Location().File()),
+				err.Location().Line(),
+				err,
+			))
+		case interface {
+			Error() error
+			Location() FuncInfo
+		}:
+			messages = append(messages, fmt.Sprintf(
+				"%s %s:%d %v",
+				err.Location().FuncName(),
+				path.Base(err.Location().File()),
+				err.Location().Line(),
+				err,
+			))
+		case interface{ StackString() string }:
+			messages = append(messages, err.StackString())
+		default:
+			messages = append(messages, err.Error())
+		}
 	}
 	return strings.Join(messages, "\n")
 }
@@ -93,8 +123,10 @@ func StackString(err error) string {
 // fetch might fail only if all the mirrors fail to respond.
 type Group []error
 
-// Error formats a []error in an easily-readable way for human consumption.
-func (g Group) Error() string {
+// StackString formats a []error as a recursive list of StackString-ed errors
+// if len() is 2 or more, otherwise as a single StackString-ed error if len()
+// is 1, otherwise as nothing if len() is 0.
+func (g Group) StackString() string {
 	l := []error(g)
 	switch len(l) {
 	case 0:
@@ -104,9 +136,26 @@ func (g Group) Error() string {
 	}
 	messages := make([]string, 0, len(l))
 	for _, err := range l {
-		messages = append(messages, indent(StackString(err)))
+		messages = append(messages, StackString(err))
 	}
-	return fmt.Sprintf("[\n%s\n]", strings.Join(messages, "\n\t,\n"))
+	return fmt.Sprintf("[\n%s\n]", indent(strings.Join(messages, "\n,\n")))
+}
+
+// Error formats a []error as a list of errors if len() is 2 or more, otherwise
+// as a single error if len() is 1, otherwise as nothing if len() is 0.
+func (g Group) Error() string {
+	l := []error(g)
+	switch len(l) {
+	case 0:
+		return ""
+	case 1:
+		return l[0].Error()
+	}
+	messages := make([]string, 0, len(l))
+	for _, err := range l {
+		messages = append(messages, err.Error())
+	}
+	return fmt.Sprintf("[\n%s\n]", indent(strings.Join(messages, "\n,\n")))
 }
 
 func indent(s string) string {

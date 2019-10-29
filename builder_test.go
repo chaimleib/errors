@@ -17,10 +17,11 @@ func TestNewBuilder(t *testing.T) {
 	b := NewBuilder("t, %q", changingMap)
 	changingMap["second"] = "new"
 	err := b.Errorf("a")
+	assert.Equal(t, "a", err.Error())
 	assert.Regexp(
 		t,
 		`^[^ ]+/errors\.TestNewBuilder\(t, map\["first":"orig"\]\) builder_test\.go:[0-9]+ a$`,
-		err.Error(),
+		StackString(err),
 	)
 }
 
@@ -29,9 +30,10 @@ func TestNewLazyBuilder(t *testing.T) {
 	b := NewLazyBuilder("t, %q", changingMap)
 	changingMap["second"] = "new"
 	err := b.Errorf("a")
+	assert.Equal(t, "a", err.Error())
 	assert.Regexp(
 		t,
 		`^[^ ]+/errors\.TestNewLazyBuilder\(<lazy> t, map\[("[^"]+":"[^"]+" ?){2}\]\) builder_test\.go:[0-9]+ a$`,
-		err.Error(),
+		StackString(err),
 	)
 }

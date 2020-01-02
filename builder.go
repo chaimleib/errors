@@ -50,20 +50,27 @@ func (s *signatured) Error() string {
 	return s.message
 }
 
+// FuncInfo returns the location of the error.
 func (s *signatured) FuncInfo() FuncInfo {
 	return s.fi
 }
 
+// ArgStringer returns a value with a String() method, which describes the
+// arguments the erroring function was called with. This can be printed within
+// parenthesis after the function name for debugging, as in StackString.
 func (s *signatured) ArgStringer() interface{ String() string } {
 	return s.argStringer
 }
 
+// stringStringer has a String method that returns the underlying string value.
 type stringStringer string
 
 func (ss stringStringer) String() string {
 	return string(ss)
 }
 
+// formatStringer has a String method that calls fmt.Sprintf with predefined
+// arguments.
 type formatStringer struct {
 	fmt    string
 	params []interface{}
@@ -73,21 +80,21 @@ func (fs formatStringer) String() string {
 	return fmt.Sprintf(fs.fmt, fs.params...)
 }
 
+// argsBuilder is the underlying type for NewBuilder.
 type argsBuilder struct {
 	argString string
 }
 
-// NewBuilder prefixes info about which function was called, and the args
-// provided.
+// NewBuilder returns an error builder that attaches info about the function
+// where the error happened, and the args with which the function was called.
 func NewBuilder(argFmt string, args ...interface{}) Builder {
 	ab := new(argsBuilder)
 	ab.argString = fmt.Sprintf(argFmt, args...)
 	return ab
 }
 
-// Errorf is the same as fmt.Errorf, except that the error message gets a
-// prefix with line number info and, if provided to NewBuilder, descriptions
-// of the arguments passed to this function call.
+// Errorf is the same as fmt.Errorf, except that the error message gets
+// FuncInfo() and ArgStringer() methods, describing the context of the error.
 func (ab *argsBuilder) Errorf(msg string, args ...interface{}) error {
 	return &signatured{
 		message:     fmt.Sprintf(msg, args...),
@@ -96,9 +103,9 @@ func (ab *argsBuilder) Errorf(msg string, args ...interface{}) error {
 	}
 }
 
-// Wrap is the same as errors.Wrap, except that the error message gets a prefix
-// with line number info and, if provided to NewBuilder, descriptions of the
-// arguments passed to this function call.
+// Wrap replaces errors.Wrap, except that the error additionally implements the
+// Wrapper() method, whose return value implements the FuncInfo() and
+// ArgStringer() methods to describe the context of the error.
 func (ab *argsBuilder) Wrap(
 	err error,
 	msg string,
@@ -119,12 +126,12 @@ type lazyArgsBuilder struct {
 // NewLazyBuilder SHOULD NOT be used unless it is known that NewBuilder
 // won't work. Frequent undisciplined usage of NewLazyBuilder can lead to
 // poor code maintainability. It is similar to NewBuilder, except that the
-// prefix is formatted later, when the error actually occurs. This can be
-// important for performance in functions called hundreds of times per second,
-// but misleading debug messages can result if the arguments have changed since
-// the function was first called. As a debug warning, any args are labeled
-// "<lazy>" to indicate that the argument values were formatted after the
-// error appeared, not when the Builder was created.
+// embedded ArgStringer()s do their formatting work lazily when the error is
+// formatted for display, rather than up-front when the Builder is initialized.
+// This can be important for performance in functions called thousands of times
+// per second, but misleading debug messages can result if the arguments have
+// changed since the function was first called. As a debug warning, any args
+// are labeled "<lazy>" by the ArgStringer().
 func NewLazyBuilder(argFmt string, args ...interface{}) Builder {
 	lab := new(lazyArgsBuilder)
 	lab.argFmt = argFmt
@@ -132,9 +139,10 @@ func NewLazyBuilder(argFmt string, args ...interface{}) Builder {
 	return lab
 }
 
-// Errorf is the same as fmt.Errorf, except that the error message gets a
-// prefix with line number info and, if provided to NewLazyBuilder,
-// descriptions of the arguments passed to this function call.
+// Errorf is the same as fmt.Errorf, except that the error message gets
+// FuncInfo() and ArgStringer() methods, describing the context of the error.
+// On lazy builders, ArgStringer() does its formatting computations when its
+// String() method gets called.
 func (lab *lazyArgsBuilder) Errorf(msg string, args ...interface{}) error {
 	argFmt := lab.argFmt
 	if len(argFmt) != 0 { // if no args, nothing to warn about
@@ -147,9 +155,11 @@ func (lab *lazyArgsBuilder) Errorf(msg string, args ...interface{}) error {
 	}
 }
 
-// Wrap is the same as errors.Wrap, except that the error message gets a prefix
-// with line number info and, if provided to NewLazyBuilder, descriptions of
-// the arguments passed to this function call.
+// Wrap replaces errors.Wrap, except that the error additionally implements the
+// Wrapper() method, whose return value implements the FuncInfo() and
+// ArgStringer() methods to describe the context of the error.
+// On lazy builders, ArgStringer() does its formatting computations when its
+// String() method gets called.
 func (lab *lazyArgsBuilder) Wrap(
 	err error,
 	msg string,

@@ -27,22 +27,19 @@ func Wrap(cause error, msg string, vars ...interface{}) Wrapped {
 // second. This is particularly useful when the wrapping error itself is a
 // special type with custom fields and methods.
 func WrapWith(cause, err error) Wrapped {
-	w := new(wrapped)
-	w.wrapped = cause
-	w.error = err
-	return w
+	return wrapped{error: err, wrapped: cause}
 }
 
 // Unwrap returns the cause of the sender.
-func (w *wrapped) Unwrap() error {
+func (w wrapped) Unwrap() error {
 	return w.wrapped
 }
 
 // Is returns whether the wrapping error or a member of its cause chain matches
 // the target.
-func (w *wrapped) Is(target error) bool {
+func (w wrapped) Is(target error) bool {
 	switch target := target.(type) {
-	case *wrapped:
+	case wrapped:
 		if w == target {
 			return true
 		}
@@ -53,9 +50,9 @@ func (w *wrapped) Is(target error) bool {
 // As assigns the first compatible error it finds in the cause chain to the
 // target, and returns true if successful. If successful, Is(w, target) will be
 // true.
-func (w *wrapped) As(target interface{}) bool {
+func (w wrapped) As(target interface{}) bool {
 	switch target := target.(type) {
-	case *wrapped:
+	case wrapped:
 		target.error = w.error
 		target.wrapped = w.wrapped
 		return true
@@ -101,7 +98,7 @@ func StackString(err error) string {
 		}:
 			messages = append(messages, fmt.Sprintf(
 				"%s(%s) %s:%d %v",
-				err.FuncInfo().FuncName(),
+				RelativeModule(err.FuncInfo().FuncName(), MainModule()),
 				err.ArgStringer().String(),
 				path.Base(err.FuncInfo().File()),
 				err.FuncInfo().Line(),
@@ -113,7 +110,7 @@ func StackString(err error) string {
 		}:
 			messages = append(messages, fmt.Sprintf(
 				"%s %s:%d %v",
-				err.FuncInfo().FuncName(),
+				RelativeModule(err.FuncInfo().FuncName(), MainModule()),
 				path.Base(err.FuncInfo().File()),
 				err.FuncInfo().Line(),
 				err,

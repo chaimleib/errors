@@ -35,6 +35,13 @@ func (w wrapped) Unwrap() error {
 	return w.wrapped
 }
 
+// Wrapper returns the error value without the error it wraps. This allows
+// access to custom fields of the error, without interference from the Unwrap
+// chain like in Is or As.
+func (w wrapped) Wrapper() error {
+	return w.error
+}
+
 // Is returns whether the wrapping error or a member of its cause chain matches
 // the target.
 func (w wrapped) Is(target error) bool {
@@ -44,7 +51,7 @@ func (w wrapped) Is(target error) bool {
 			return true
 		}
 	}
-	return Is(w.error, target) || Is(w.wrapped, target)
+	return Is(w.Wrapper(), target) || Is(w.Unwrap(), target)
 }
 
 // As assigns the first compatible error it finds in the cause chain to the
@@ -57,7 +64,7 @@ func (w wrapped) As(target interface{}) bool {
 		target.wrapped = w.wrapped
 		return true
 	}
-	return As(w.error, target) || As(w.wrapped, target)
+	return As(w.Wrapper(), target) || As(w.Unwrap(), target)
 }
 
 // Stack returns a slice of all the errors found by recursively calling
@@ -88,38 +95,47 @@ func StackString(err error) string {
 	stack := Stack(err)
 	messages := make([]string, 0, len(stack))
 	for _, err := range stack {
-		switch err := err.(type) {
-		case interface{ StackString() string }:
-			messages = append(messages, err.StackString())
-		case interface {
-			Error() string
-			FuncInfo() FuncInfo
-			ArgStringer() interface{ String() string }
-		}:
-			messages = append(messages, fmt.Sprintf(
-				"%s(%s) %s:%d %v",
-				RelativeModule(err.FuncInfo().FuncName(), MainModule()),
-				err.ArgStringer().String(),
-				path.Base(err.FuncInfo().File()),
-				err.FuncInfo().Line(),
-				err,
-			))
-		case interface {
-			Error() error
-			FuncInfo() FuncInfo
-		}:
-			messages = append(messages, fmt.Sprintf(
-				"%s %s:%d %v",
-				RelativeModule(err.FuncInfo().FuncName(), MainModule()),
-				path.Base(err.FuncInfo().File()),
-				err.FuncInfo().Line(),
-				err,
-			))
-		default:
-			messages = append(messages, err.Error())
-		}
+		messages = append(messages, stackStringAt(err))
 	}
 	return strings.Join(messages, "\n")
+}
+
+// stackStringAt returns one level of StackString.
+func stackStringAt(err error) string {
+	switch err := err.(type) {
+	case interface{ StackString() string }:
+		return err.StackString()
+	case interface {
+		error
+		FuncInfo() FuncInfo
+		ArgStringer() interface{ String() string }
+	}:
+		return fmt.Sprintf(
+			"%s(%s) %s:%d %v",
+			RelativeModule(err.FuncInfo().FuncName(), MainModule()),
+			err.ArgStringer().String(),
+			path.Base(err.FuncInfo().File()),
+			err.FuncInfo().Line(),
+			err,
+		)
+	case interface {
+		error
+		FuncInfo() FuncInfo
+	}:
+		return fmt.Sprintf(
+			"%s %s:%d %v",
+			RelativeModule(err.FuncInfo().FuncName(), MainModule()),
+			path.Base(err.FuncInfo().File()),
+			err.FuncInfo().Line(),
+			err,
+		)
+	case interface {
+		error
+		Wrapper() error
+	}:
+		return stackStringAt(err.Wrapper())
+	}
+	return err.Error()
 }
 
 // Group allows treating a slice of errors as an error. This is useful when

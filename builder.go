@@ -12,7 +12,7 @@ type Builder interface {
 
 type builtinBuilder struct{}
 
-// SimpleBuilder has no frills. It is a proxy to built-in go packages.
+// BuiltinBuilder has no frills. It is a proxy to built-in go packages.
 var BuiltinBuilder Builder = (*builtinBuilder)(nil)
 
 // Errorf is the same as fmt.Errorf
@@ -29,22 +29,33 @@ func (bb *builtinBuilder) Wrap(
 	return Wrap(err, msg, args...)
 }
 
+// signatured is an error that also has info about the function where it
+// happened. It behaves like an error created with the builtin errors.New,
+// except when processed with a function that is aware of its extra methods,
+// like StackString.
 type signatured struct {
+	// message describes the error
 	message string
-	fi      FuncInfo
-	params  interface{ String() string }
+
+	// fi stores the location of the error
+	fi FuncInfo
+
+	// argStringer has a String() method that describes the arguments provided to
+	// the erroring function. The StackString function will add this between
+	// parenthesis after the function name.
+	argStringer interface{ String() string }
 }
 
 func (s *signatured) Error() string {
 	return s.message
 }
 
-func (s *signatured) Location() FuncInfo {
+func (s *signatured) FuncInfo() FuncInfo {
 	return s.fi
 }
 
-func (s *signatured) Parameters() interface{ String() string } {
-	return s.params
+func (s *signatured) ArgStringer() interface{ String() string } {
+	return s.argStringer
 }
 
 type stringStringer string
@@ -63,14 +74,14 @@ func (fs formatStringer) String() string {
 }
 
 type argsBuilder struct {
-	argStr string
+	argString string
 }
 
 // NewBuilder prefixes info about which function was called, and the args
 // provided.
-func NewBuilder(argStr string, args ...interface{}) Builder {
+func NewBuilder(argFmt string, args ...interface{}) Builder {
 	ab := new(argsBuilder)
-	ab.argStr = fmt.Sprintf(argStr, args...)
+	ab.argString = fmt.Sprintf(argFmt, args...)
 	return ab
 }
 
@@ -79,9 +90,9 @@ func NewBuilder(argStr string, args ...interface{}) Builder {
 // of the arguments passed to this function call.
 func (ab *argsBuilder) Errorf(msg string, args ...interface{}) error {
 	return &signatured{
-		message: fmt.Sprintf(msg, args...),
-		fi:      NewFuncInfo(1),
-		params:  stringStringer(ab.argStr),
+		message:     fmt.Sprintf(msg, args...),
+		fi:          NewFuncInfo(1),
+		argStringer: stringStringer(ab.argString),
 	}
 }
 
@@ -94,9 +105,9 @@ func (ab *argsBuilder) Wrap(
 	args ...interface{},
 ) Wrapped {
 	return WrapWith(err, &signatured{
-		message: fmt.Sprintf(msg, args...),
-		fi:      NewFuncInfo(1),
-		params:  stringStringer(ab.argStr),
+		message:     fmt.Sprintf(msg, args...),
+		fi:          NewFuncInfo(1),
+		argStringer: stringStringer(ab.argString),
 	})
 }
 
@@ -130,9 +141,9 @@ func (lab *lazyArgsBuilder) Errorf(msg string, args ...interface{}) error {
 		argFmt = "<lazy> " + argFmt
 	}
 	return &signatured{
-		message: fmt.Sprintf(msg, args...),
-		fi:      NewFuncInfo(1),
-		params:  formatStringer{argFmt, lab.args},
+		message:     fmt.Sprintf(msg, args...),
+		fi:          NewFuncInfo(1),
+		argStringer: formatStringer{argFmt, lab.args},
 	}
 }
 
@@ -149,8 +160,8 @@ func (lab *lazyArgsBuilder) Wrap(
 		argFmt = "<lazy> " + argFmt
 	}
 	return WrapWith(err, &signatured{
-		message: fmt.Sprintf(msg, args...),
-		fi:      NewFuncInfo(1),
-		params:  formatStringer{argFmt, lab.args},
+		message:     fmt.Sprintf(msg, args...),
+		fi:          NewFuncInfo(1),
+		argStringer: formatStringer{argFmt, lab.args},
 	})
 }

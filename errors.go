@@ -80,37 +80,44 @@ func Stack(err error) []error {
 
 // StackString recursively calls Unwrap() on the given error and stringifies
 // all the errors in the chain.
+//
+// The stringification adds location prefixes to errors that additionally
+// implement `FuncInfo() FuncInfo` and optionally `ArgStringer() interface{
+// String() string }`.
+//
+// The stringification can be overridden if the error implements `StackString()
+// string`.
 func StackString(err error) string {
 	stack := Stack(err)
 	messages := make([]string, 0, len(stack))
 	for _, err := range stack {
 		switch err := err.(type) {
+		case interface{ StackString() string }:
+			messages = append(messages, err.StackString())
 		case interface {
 			Error() string
-			Location() FuncInfo
-			Parameters() interface{ String() string }
+			FuncInfo() FuncInfo
+			ArgStringer() interface{ String() string }
 		}:
 			messages = append(messages, fmt.Sprintf(
 				"%s(%s) %s:%d %v",
-				err.Location().FuncName(),
-				err.Parameters().String(),
-				path.Base(err.Location().File()),
-				err.Location().Line(),
+				err.FuncInfo().FuncName(),
+				err.ArgStringer().String(),
+				path.Base(err.FuncInfo().File()),
+				err.FuncInfo().Line(),
 				err,
 			))
 		case interface {
 			Error() error
-			Location() FuncInfo
+			FuncInfo() FuncInfo
 		}:
 			messages = append(messages, fmt.Sprintf(
 				"%s %s:%d %v",
-				err.Location().FuncName(),
-				path.Base(err.Location().File()),
-				err.Location().Line(),
+				err.FuncInfo().FuncName(),
+				path.Base(err.FuncInfo().File()),
+				err.FuncInfo().Line(),
 				err,
 			))
-		case interface{ StackString() string }:
-			messages = append(messages, err.StackString())
 		default:
 			messages = append(messages, err.Error())
 		}

@@ -22,5 +22,9 @@ func RelativeModule(modName, home string) string {
 	if !strings.Contains(home, "/") || !strings.HasPrefix(modName, home) {
 		return modName
 	}
-	return "~" + modName[len(home):]
+	postHome := modName[len(home):]
+	if postHome == "" || postHome[0] == '/' || postHome[0] == '.' {
+		return "~" + postHome
+	}
+	return modName
 }

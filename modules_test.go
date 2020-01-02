@@ -24,11 +24,19 @@ func TestRelativeModule(t *testing.T) {
 		{"runtime/debug", "runtime/debug"},
 		{"github.com/chaimleib/other", "github.com/chaimleib/other"},
 		{home, "~"},
-		{home + "/sub", "~/sub"},
+		{home + "/sub", "~/sub"}, // submodules abbreviate
+		{home + "2", home + "2"}, // sibling modules with identical prefix don't
+		{home + "2/sub", home + "2/sub"},
 	}
 	for i, c := range cases {
 		msg := fmt.Sprintf("case %d %+v", i, c)
 		assert.Equal(t, c.exp, RelativeModule(c.mod, home), msg)
+		funcName := c.mod + ".MyFunc"
+		assert.Equal(
+			t,
+			c.exp+".MyFunc",
+			RelativeModule(funcName, home),
+			msg+" w/func",
+		)
 	}
-	assert.Equal(t, "runtime/debug", RelativeModule("runtime/debug", "github.com/chaimleib/errors"))
 }

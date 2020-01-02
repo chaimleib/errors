@@ -95,13 +95,13 @@ func StackString(err error) string {
 	stack := Stack(err)
 	messages := make([]string, 0, len(stack))
 	for _, err := range stack {
-		messages = append(messages, stackStringAt(err))
+		messages = append(messages, StackStringAt(err))
 	}
 	return strings.Join(messages, "\n")
 }
 
-// stackStringAt returns one level of StackString.
-func stackStringAt(err error) string {
+// StackStringAt returns one level of StackString.
+func StackStringAt(err error) string {
 	switch err := err.(type) {
 	case interface{ StackString() string }:
 		return err.StackString()
@@ -133,7 +133,7 @@ func stackStringAt(err error) string {
 		error
 		Wrapper() error
 	}:
-		return stackStringAt(err.Wrapper())
+		return StackStringAt(err.Wrapper())
 	}
 	return err.Error()
 }

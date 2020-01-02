@@ -2,6 +2,8 @@
 
 # github.com/chaimleib/errors
 
+https://godoc.org/github.com/chaimleib/errors
+
 This Go package is a drop-in replacement to the built-in [`errors`](https://golang.org/pkg/errors/) package. It is designed for Go 1.13, while under 1.12, the `Is`, `As` and `Unwrap` functions have been backported.
 
 ## Why?
@@ -10,9 +12,11 @@ This Go package is a drop-in replacement to the built-in [`errors`](https://gola
 
 ```
 main.main() main.go:34 error getting user profile
-github.com/chaimleib/client.UserProfile(ctx, "alice") userprofile.go:124 error authenticating
-github.com/chaimleib/client.Authenticate(ctx, "bob", pw) client.go:63 password expired
+~/client.UserProfile(ctx, "alice") userprofile.go:124 error authenticating
+~/client.Authenticate(ctx, "bob", pw) client.go:63 password expired
 ```
+
+> Your `go.mod` main module name is abbreviated as `~`.
 
 That's much more helpful than this:
 
@@ -60,6 +64,8 @@ if err != nil {
 
 ## What else can I do?
 
+* Print just one level of stack trace using `StackStringAt(err)`. Index into `Stack(err)` to select an error by its `Unwrap()` depth.
+
 * Use `Is`, `As` and `Unwrap` in Go 1.12 (added officially in Go 1.13)
 
 * Group errors ([try me](https://goplay.space/#auXQKNwP0VV))
@@ -87,9 +93,11 @@ fmt.Println(fi.File(), fi.Line(), fi.FuncName())
 // /absolute/path/to/main.go 12 main.main
 ```
 
+* Customize your stack trace formatting by writing your our `StackString()` function. All the necessary plumbing (like `FuncInfo()`, `ArgStringer()` and `Wrapper()`) is exposed as public methods.
+
 ## License
 
-Copyright 2019 Chaim Leib Halbert
+Copyright 2019-2020 Chaim Leib Halbert
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this source code except in compliance with the License.

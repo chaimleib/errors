@@ -4,6 +4,8 @@
 
 https://godoc.org/github.com/chaimleib/errors
 
+![Doctor Gopher treating patient](doctorPatientGophers.png)
+
 This Go package is a drop-in replacement to the built-in [`errors`](https://golang.org/pkg/errors/) package. It is designed for Go 1.13, while under 1.12, the `Is`, `As` and `Unwrap` functions have been backported.
 
 ## Why?
@@ -60,6 +62,38 @@ if err != nil {
 if err != nil {
   fmt.Println(errors.StackString(err))
 }
+```
+
+## Another example ([try me!](https://goplay.space/#HE4BuAJaZYA)):
+
+```go
+func main() {
+	b := errors.NewBuilder("")
+	if err := FileHasHello("greet.txt"); err != nil {
+		err = b.Wrap(err, "program failed")
+		fmt.Println(errors.StackString(err))
+		return
+	}
+}
+
+func FileHasHello(fpath string) error {
+	b := errors.NewBuilder("%q", fpath)
+	buf, err := ioutil.ReadFile(fpath)
+	if err != nil {
+		return b.Wrap(err, "could not open file")
+	}
+	if !bytes.Contains(buf, []byte("hello")) {
+		return b.Errorf("could not find `hello` in file")
+	}
+	return nil
+}
+
+/* output:
+main.main() prog.go:14 program failed
+main.FileHasHello("greet.txt") prog.go:24 could not open file
+open greet.txt: No such file or directory
+No such file or directory
+*/
 ```
 
 ## What else can I do?

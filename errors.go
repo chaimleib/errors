@@ -1,5 +1,32 @@
 package errors
 
+/*
+Informative, stack trace error formatting, compatible with Go 1.13's Unwrap() API.
+
+Example:
+
+```
+func main() {
+	b := errors.NewBuilder("")
+	if err := cmd.run("parse"); err != nil {
+		err := b.Wrap(err, "parse failed")
+		fmt.Println(errors.StackString(err))
+		os.Exit(1)
+	}
+}
+
+// cmd.go
+func Run(cmd string) error {
+	b := errors.NewBuilder("%q", cmd)
+	// ...
+	return b.Errorf("unexpected token: %q", token)
+}
+
+// output
+main.main() main.go:12 parse failed
+~/cmd.Run("parse") cmd.go:83 unexpected token: "!"
+```
+*/
 import (
 	"fmt"
 	"path"
